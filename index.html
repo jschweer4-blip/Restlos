@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Restlos WG-Kühlschrank</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Layout: Kennzahlen oben, links der Kühlschrank (Bestand), rechts Einkaufsliste und Rezepte, unten Statistik und Regeln */
+  --bg: #eef3f6;
+  --surface: #ffffff;
+  --ink: #14232c;
+  --muted: #5b6d78;
+  --line: #d3dee5;
+  --accent: #1d5fa6;       /* Kühlschrank-Blau */
+  --accent-soft: #dfeaf6;
+  --fresh: #2c7a4b;        /* haltbar */
+  --fresh-soft: #e0f1e6;
+  --soon: #a86a00;         /* läuft bald ab */
+  --soon-soft: #fbefd6;
+  --gone: #c23a2b;         /* abgelaufen / weggeworfen */
+  --gone-soft: #f9e1dd;
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Manrope", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d151a; --surface: #152129; --ink: #e3ecf1; --muted: #93a6b2; --line: #263741;
+    --accent: #6aa8ea; --accent-soft: #1b2f44; --fresh: #5cc286; --fresh-soft: #17301f;
+    --soon: #e9b04c; --soon-soft: #3a2d12; --gone: #f07563; --gone-soft: #3d1d19; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d151a; --surface: #152129; --ink: #e3ecf1; --muted: #93a6b2; --line: #263741;
+  --accent: #6aa8ea; --accent-soft: #1b2f44; --fresh: #5cc286; --fresh-soft: #17301f;
+  --soon: #e9b04c; --soon-soft: #3a2d12; --gone: #f07563; --gone-soft: #3d1d19; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15.5px; line-height: 1.5; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 26px 18px 60px; display: grid; gap: 20px; }
+h1, h2, h3 { margin: 0; line-height: 1.15; text-wrap: balance; }
+h1 { font-family: var(--font-display); font-size: 2.1rem; font-weight: 800; }
+h2 { font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; }
+h3 { font-size: 1rem; font-weight: 800; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.small { font-size: .85rem; }
+header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 14px; }
+header p { max-width: 62ch; }
+.who { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.sync { font-size: .78rem; color: var(--muted); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px; display: grid; gap: 14px; align-content: start; min-width: 0; }
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 760px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; border-left: 5px solid var(--line); }
+.tile b { display: block; font-family: var(--font-display); font-size: 1.9rem; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.tile.soon { border-left-color: var(--soon); }
+.tile.gone { border-left-color: var(--gone); }
+.tile.fresh { border-left-color: var(--fresh); }
+.tile.accent { border-left-color: var(--accent); }
+.main { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 900px) { .main { grid-template-columns: 1fr; } }
+.side { display: grid; gap: 20px; }
+.bottom { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+@media (max-width: 900px) { .bottom { grid-template-columns: 1fr; } }
+button, select, input { font: inherit; color: var(--ink); }
+button { cursor: pointer; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); padding: 7px 12px; font-weight: 700; }
+button:hover { border-color: var(--accent); }
+button:disabled { opacity: .55; cursor: default; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.primary:hover { filter: brightness(1.08); }
+.ghost { background: transparent; }
+.danger { color: var(--gone); }
+.danger:hover { border-color: var(--gone); }
+.tiny { padding: 4px 9px; font-size: .8rem; border-radius: 8px; }
+input, select { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--surface); min-width: 0; }
+label { font-size: .8rem; font-weight: 700; color: var(--muted); display: grid; gap: 4px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.between { justify-content: space-between; }
+/* Formular */
+.addform { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-items: end; padding: 14px; border: 1px dashed var(--line); border-radius: 12px; }
+@media (max-width: 760px) { .addform { grid-template-columns: 1fr 1fr; } }
+.quick { display: flex; gap: 6px; flex-wrap: wrap; grid-column: 1 / -1; align-items: center; }
+/* Liste */
+.items { display: grid; gap: 8px; }
+.item { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: 12px; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px 10px 0; overflow: hidden; }
+.item .stripe { align-self: stretch; background: var(--fresh); }
+.item.soon .stripe { background: var(--soon); }
+.item.gone .stripe { background: var(--gone); }
+.item .name { font-weight: 800; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 3px; }
+.pill { display: inline-block; border-radius: 999px; padding: 1px 9px; font-size: .75rem; font-weight: 800; white-space: nowrap; }
+.pill.fresh { background: var(--fresh-soft); color: var(--fresh); }
+.pill.soon { background: var(--soon-soft); color: var(--soon); }
+.pill.gone { background: var(--gone-soft); color: var(--gone); }
+.pill.owner { background: var(--accent-soft); color: var(--accent); }
+.pill.plain { background: var(--bg); color: var(--muted); }
+.actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.empty { padding: 16px; border: 1px dashed var(--line); border-radius: 12px; color: var(--muted); display: grid; gap: 10px; justify-items: start; }
+/* Einkaufsliste */
+.shop { display: grid; gap: 6px; }
+.shopitem { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; }
+.shopitem.done .sname { text-decoration: line-through; color: var(--muted); }
+.shopitem input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); }
+/* Rezepte */
+.recipe { border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 8px; }
+.recipe ol { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+.thinking { color: var(--muted); font-style: italic; }
+/* Statistik */
+.bars { display: grid; gap: 8px; }
+.barrow { display: grid; grid-template-columns: 110px 1fr 70px; gap: 10px; align-items: center; font-variant-numeric: tabular-nums; }
+.barbg { height: 12px; border-radius: 6px; background: var(--bg); border: 1px solid var(--line); overflow: hidden; }
+.barfill { height: 100%; background: var(--gone); border-radius: 6px; }
+.barrow span:last-child { text-align: right; font-weight: 800; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 3px 4px 3px 12px; font-weight: 700; font-size: .85rem; }
+.chip button { border: 0; padding: 0 8px; background: transparent; color: var(--muted); }
+.confirm { display: none; gap: 8px; align-items: center; flex-wrap: wrap; }
+.confirm.show { display: flex; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--ink); color: var(--surface); padding: 10px 16px; border-radius: 12px; font-weight: 700; display: none; z-index: 5; max-width: calc(100% - 32px); }
+.toast.show { display: block; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Restlos</h1>
+      <p class="muted">Der gemeinsame Kühlschrank eurer WG: Wer hat was, was läuft bald ab, was muss auf die Einkaufsliste? Und was kocht man aus den Resten?</p>
+    </div>
+    <div class="who">
+      <label for="me">Ich bin
+        <select id="me"></select>
+      </label>
+      <span class="sync" id="sync">Daten werden geladen …</span>
+    </div>
+  </header>
+
+  <div class="tiles" id="tiles"></div>
+
+  <div class="main">
+    <section class="card" aria-labelledby="fridgeHead">
+      <div class="row between">
+        <h2 id="fridgeHead">Im Kühlschrank</h2>
+        <span class="small muted">sortiert nach Ablaufdatum</span>
+      </div>
+      <form class="addform" id="addForm" autocomplete="off">
+        <label for="fName">Lebensmittel<input id="fName" required placeholder="z. B. Joghurt" list="nameList"></label>
+        <label for="fQty">Menge<input id="fQty" type="number" min="0.1" step="any" value="1"></label>
+        <label for="fUnit">Einheit
+          <select id="fUnit"><option>Stk</option><option>Packung</option><option>g</option><option>ml</option><option>l</option><option>Becher</option><option>Flasche</option></select>
+        </label>
+        <label for="fExp">Haltbar bis<input id="fExp" type="date" required></label>
+        <label for="fOwner">Gehört<select id="fOwner"></select></label>
+        <label for="fPrice">Preis €<input id="fPrice" type="number" min="0" step="0.01" placeholder="optional"></label>
+        <div class="quick">
+          <span class="small muted">Schnell:</span>
+          <button type="button" class="tiny" data-days="2">+2 Tage</button>
+          <button type="button" class="tiny" data-days="5">+5 Tage</button>
+          <button type="button" class="tiny" data-days="7">+1 Woche</button>
+          <button type="button" class="tiny" data-days="14">+2 Wochen</button>
+          <span style="flex:1"></span>
+          <button type="submit" class="primary">In den Kühlschrank</button>
+        </div>
+        <datalist id="nameList"></datalist>
+      </form>
+      <div class="items" id="items"></div>
+    </section>
+
+    <div class="side">
+      <section class="card" aria-labelledby="shopHead">
+        <div class="row between">
+          <h2 id="shopHead">Einkaufsliste</h2>
+          <span class="small muted" id="shopCount"></span>
+        </div>
+        <form class="row" id="shopForm" autocomplete="off">
+          <label for="sName" style="flex:1">Etwas ergänzen<input id="sName" placeholder="z. B. Kaffee"></label>
+          <button type="submit" style="align-self:end">Hinzufügen</button>
+        </form>
+        <div class="shop" id="shop"></div>
+        <div class="row" id="shopActions"></div>
+      </section>
+
+      <section class="card" aria-labelledby="recHead">
+        <div class="row between">
+          <h2 id="recHead">Was koche ich aus den Resten?</h2>
+        </div>
+        <p class="small muted" id="recIntro">Rezeptideen, die zuerst verbrauchen, was bald abläuft.</p>
+        <div class="row">
+          <button type="button" class="primary" id="aiBtn" hidden>KI-Rezept vorschlagen</button>
+          <button type="button" id="stopBtn" hidden>Stopp</button>
+        </div>
+        <div id="aiOut"></div>
+        <div id="recipes" style="display:grid;gap:10px"></div>
+      </section>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <section class="card" aria-labelledby="wasteHead">
+      <div class="row between">
+        <h2 id="wasteHead">Weggeworfen</h2>
+        <span class="small muted">seit Beginn der Aufzeichnung</span>
+      </div>
+      <div id="waste"></div>
+    </section>
+
+    <section class="card" aria-labelledby="rulesHead">
+      <h2 id="rulesHead">Mindestbestand</h2>
+      <p class="small muted">Fällt der Vorrat unter die Grenze, landet der Artikel automatisch auf der Einkaufsliste, wie ein Meldebestand im Lager.</p>
+      <form class="row" id="ruleForm" autocomplete="off">
+        <label for="rName" style="flex:2">Artikel<input id="rName" required placeholder="z. B. Eier" list="nameList"></label>
+        <label for="rQty" style="flex:1">Mindestens<input id="rQty" type="number" min="0.1" step="any" value="1" required></label>
+        <label for="rUnit" style="flex:1">Einheit
+          <select id="rUnit"><option>Stk</option><option>Packung</option><option>g</option><option>ml</option><option>l</option><option>Becher</option><option>Flasche</option></select>
+        </label>
+        <button type="submit" style="align-self:end">Regel anlegen</button>
+      </form>
+      <div class="chips" id="rules"></div>
+
+      <h2 style="margin-top:8px">WG-Mitglieder</h2>
+      <form class="row" id="memberForm" autocomplete="off">
+        <label for="mName" style="flex:1">Name<input id="mName" placeholder="z. B. Lena" maxlength="24"></label>
+        <button type="submit" style="align-self:end">Hinzufügen</button>
+      </form>
+      <div class="chips" id="members"></div>
+
+      <div class="row" style="margin-top:8px">
+        <button type="button" id="demoBtn">Beispiel-WG laden</button>
+        <button type="button" class="danger" id="resetBtn">Alles leeren</button>
+        <div class="confirm" id="resetConfirm">
+          <span class="small">Kühlschrank, Liste, Statistik und Regeln für alle löschen?</span>
+          <button type="button" class="danger" id="resetYes">Ja, leeren</button>
+          <button type="button" id="resetNo">Abbrechen</button>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var DAY = 86400000;
+  var LS_KEY = "restlos-wg-v1";
+  var ME_KEY = "restlos-me";
+  var WG = "Alle (WG)";
+
+  // ---------- Helfer ----------
+  function el(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function uid() { return Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4); }
+  function norm(s) { return String(s || "").trim().toLowerCase(); }
+  function isoDate(d) { var m = d.getMonth() + 1, day = d.getDate(); return d.getFullYear() + "-" + (m < 10 ? "0" : "") + m + "-" + (day < 10 ? "0" : "") + day; }
+  function today0() { var d = new Date(); d.setHours(0, 0, 0, 0); return d; }
+  function plusDays(n) { return isoDate(new Date(today0().getTime() + n * DAY)); }
+  function daysLeft(iso) { var p = String(iso).split("-"); var d = new Date(+p[0], +p[1] - 1, +p[2]); return Math.round((d - today0()) / DAY); }
+  function euro(n) { return (Math.round(n * 100) / 100).toLocaleString("de-DE", { style: "currency", currency: "EUR" }); }
+  function fmtQty(q, u) { var n = Math.round(q * 100) / 100; return n.toLocaleString("de-DE") + " " + u; }
+  function status(iso) {
+    var d = daysLeft(iso);
+    if (d < 0) return { cls: "gone", text: d === -1 ? "seit gestern abgelaufen" : "seit " + (-d) + " Tagen abgelaufen" };
+    if (d === 0) return { cls: "soon", text: "läuft heute ab" };
+    if (d === 1) return { cls: "soon", text: "läuft morgen ab" };
+    if (d <= 2) return { cls: "soon", text: "noch " + d + " Tage" };
+    return { cls: "fresh", text: "noch " + d + " Tage" };
+  }
+  var toastTimer;
+  function toast(t) { var x = el("toast"); x.textContent = t; x.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(function () { x.classList.remove("show"); }, 3200); }
+
+  // ---------- Zustand ----------
+  function emptyState() { return { rev: 0, members: ["Ich"], items: [], shopping: [], rules: [], waste: [] }; }
+  function normalize(d) {
+    var s = emptyState();
+    if (!d || typeof d !== "object") return s;
+    s.rev = typeof d.rev === "number" ? d.rev : 0;
+    s.members = Array.isArray(d.members) && d.members.length ? d.members.map(String) : ["Ich"];
+    s.items = Array.isArray(d.items) ? d.items.filter(function (x) { return x && x.name && x.expires; }) : [];
+    s.shopping = Array.isArray(d.shopping) ? d.shopping.filter(function (x) { return x && x.name; }) : [];
+    s.rules = Array.isArray(d.rules) ? d.rules.filter(function (x) { return x && x.name; }) : [];
+    s.waste = Array.isArray(d.waste) ? d.waste.filter(function (x) { return x && x.name; }) : [];
+    return s;
+  }
+  var state = emptyState();
+  var me = "Ich";
+  try { me = localStorage.getItem(ME_KEY) || "Ich"; } catch (e) {}
+  var dbRef = null, writeChain = Promise.resolve();
+
+  function save(msg) {
+    state.rev = (state.rev || 0) + 1;
+    if (state.waste.length > 400) state.waste = state.waste.slice(-400);
+    var body = JSON.parse(JSON.stringify(state));
+    try { localStorage.setItem(LS_KEY, JSON.stringify(body)); } catch (e) {}
+    if (dbRef) {
+      writeChain = writeChain.then(function () { return dbRef.set(body); }).catch(function () {
+        el("sync").textContent = "Speichern für die WG fehlgeschlagen, Daten nur in diesem Browser";
+      });
+    }
+    render();
+    if (msg) toast(msg);
+  }
+
+  // ---------- Lager-Logik ----------
+  function stockOf(name) {
+    var n = norm(name);
+    return state.items.filter(function (i) { return norm(i.name) === n; }).reduce(function (s, i) { return s + Number(i.qty || 0); }, 0);
+  }
+  function onList(name) { var n = norm(name); return state.shopping.some(function (s) { return !s.done && norm(s.name) === n; }); }
+  function addShopping(name, qty, unit, reason) {
+    if (onList(name)) return false;
+    state.shopping.push({ id: uid(), name: name, qty: qty || 1, unit: unit || "Stk", reason: reason || "", by: me, done: false });
+    return true;
+  }
+  function checkRules() {
+    var added = [];
+    state.rules.forEach(function (r) {
+      var have = stockOf(r.name);
+      if (have < r.min && addShopping(r.name, Math.max(1, Math.round((r.min - have) * 100) / 100), r.unit, "Mindestbestand")) added.push(r.name);
+    });
+    return added;
+  }
+  function itemById(id) { for (var i = 0; i < state.items.length; i++) if (state.items[i].id === id) return state.items[i]; return null; }
+  function removeItem(id) { state.items = state.items.filter(function (i) { return i.id !== id; }); }
+
+  function consumeOne(id) {
+    var it = itemById(id); if (!it) return;
+    var step = (it.unit === "g" || it.unit === "ml") ? Math.min(it.qty, 100) : 1;
+    it.qty = Math.round((it.qty - step) * 100) / 100;
+    if (it.qty <= 0) { finishItem(id); return; }
+    var added = checkRules();
+    save(added.length ? added.join(", ") + " unter Mindestbestand: auf die Einkaufsliste gesetzt" : null);
+  }
+  function finishItem(id) {
+    var it = itemById(id); if (!it) return;
+    removeItem(id);
+    var added = checkRules();
+    var msg = it.name + " ist aufgebraucht.";
+    if (!added.length && stockOf(it.name) === 0 && addShopping(it.name, it.origQty || 1, it.unit, "Aufgebraucht")) msg += " Steht jetzt auf der Einkaufsliste.";
+    else if (added.length) msg += " Mindestbestand unterschritten, steht auf der Einkaufsliste.";
+    save(msg);
+  }
+  function wasteItem(id) {
+    var it = itemById(id); if (!it) return;
+    var share = it.origQty ? Math.min(1, it.qty / it.origQty) : 1;
+    var value = it.price ? it.price * share : 0;
+    state.waste.push({ name: it.name, qty: it.qty, unit: it.unit, value: Math.round(value * 100) / 100, owner: it.owner, by: me, date: isoDate(new Date()) });
+    removeItem(id);
+    checkRules();
+    addShopping(it.name, it.origQty || it.qty || 1, it.unit, "Weggeworfen, neu kaufen?");
+    save(it.name + " weggeworfen" + (value ? " (" + euro(value) + ")" : "") + ". Steht zur Erinnerung auf der Einkaufsliste.");
+  }
+
+  // ---------- Speicherung / Sync ----------
+  function init() {
+    try { var raw = localStorage.getItem(LS_KEY); if (raw) state = normalize(JSON.parse(raw)); } catch (e) {}
+    render();
+    if (!window.claude || typeof window.claude.use !== "function") { el("sync").textContent = "Gespeichert in diesem Browser"; return; }
+    var timer = setTimeout(function () { el("sync").textContent = "WG-Daten gerade nicht erreichbar"; }, 10000);
+    window.claude.use("db").then(function (db) {
+      if (!db) { clearTimeout(timer); el("sync").textContent = "Gespeichert in diesem Browser"; return; }
+      dbRef = db.doc("wg/kuehlschrank");
+      var first = true;
+      dbRef.onSnapshot(function (snap) {
+        if (snap.metadata && snap.metadata.hasPendingWrites) return;
+        if (snap.exists) {
+          var remote = normalize(snap.data());
+          if (remote.rev >= state.rev) state = remote;
+          else if (first) save();
+        } else if (first && (state.items.length || state.shopping.length)) { save(); }
+        first = false;
+        if (!snap.metadata || !snap.metadata.fromCache) { clearTimeout(timer); el("sync").textContent = "Mit der WG synchronisiert"; }
+        render();
+      }, function () { clearTimeout(timer); dbRef = null; el("sync").textContent = "Gespeichert in diesem Browser"; });
+    }).catch(function () { clearTimeout(timer); el("sync").textContent = "Gespeichert in diesem Browser"; });
+    window.claude.use("sample").then(function (s) { sample = s; el("aiBtn").hidden = !s; }).catch(function () {});
+  }
+
+  // ---------- Darstellung ----------
+  function ownerOptions(selected) {
+    return [WG].concat(state.members).map(function (m) { return "<option" + (m === selected ? " selected" : "") + ">" + esc(m) + "</option>"; }).join("");
+  }
+  function renderHeader() {
+    if (state.members.indexOf(me) < 0) me = state.members[0];
+    el("me").innerHTML = state.members.map(function (m) { return "<option" + (m === me ? " selected" : "") + ">" + esc(m) + "</option>"; }).join("");
+    var cur = el("fOwner").value;
+    el("fOwner").innerHTML = ownerOptions(cur || WG);
+    var names = {};
+    state.items.concat(state.shopping, state.rules, state.waste).forEach(function (x) { names[x.name] = 1; });
+    ["Milch", "Eier", "Butter", "Käse", "Joghurt", "Quark", "Sahne", "Hähnchen", "Hackfleisch", "Tofu", "Paprika", "Tomaten", "Gurke", "Salat", "Spinat", "Brokkoli", "Möhren", "Zucchini", "Feta", "Mozzarella", "Wurst", "Schinken", "Tortillas", "Saft"].forEach(function (n) { names[n] = 1; });
+    el("nameList").innerHTML = Object.keys(names).sort().map(function (n) { return '<option value="' + esc(n) + '">'; }).join("");
+  }
+  function renderTiles() {
+    var soon = 0, gone = 0;
+    state.items.forEach(function (i) { var d = daysLeft(i.expires); if (d < 0) gone++; else if (d <= 2) soon++; });
+    var openShop = state.shopping.filter(function (s) { return !s.done; }).length;
+    var monthKey = isoDate(new Date()).slice(0, 7);
+    var wasteMonth = state.waste.filter(function (w) { return String(w.date).slice(0, 7) === monthKey; }).reduce(function (s, w) { return s + (w.value || 0); }, 0);
+    el("tiles").innerHTML =
+      '<div class="tile soon"><b>' + soon + '</b><span class="small muted">läuft in ≤ 2 Tagen ab</span></div>' +
+      '<div class="tile gone"><b>' + gone + '</b><span class="small muted">schon abgelaufen</span></div>' +
+      '<div class="tile accent"><b>' + openShop + '</b><span class="small muted">auf der Einkaufsliste</span></div>' +
+      '<div class="tile gone"><b>' + euro(wasteMonth) + '</b><span class="small muted">diesen Monat weggeworfen</span></div>';
+  }
+  function renderItems() {
+    var box = el("items");
+    if (!state.items.length) {
+      box.innerHTML = '<div class="empty"><p>Der Kühlschrank ist leer. Trag oben ein, was drin ist, oder lade für die Demo eine Beispiel-WG.</p><button type="button" class="primary" id="demoBtn2">Beispiel-WG laden</button></div>';
+      el("demoBtn2").addEventListener("click", loadDemo);
+      return;
+    }
+    var list = state.items.slice().sort(function (a, b) { return a.expires < b.expires ? -1 : a.expires > b.expires ? 1 : 0; });
+    box.innerHTML = list.map(function (it) {
+      var st = status(it.expires);
+      return '<div class="item ' + st.cls + '"><div class="stripe"></div><div>' +
+        '<div class="name">' + esc(it.name) + ' <span class="muted small" style="font-weight:600">' + esc(fmtQty(it.qty, it.unit)) + "</span></div>" +
+        '<div class="meta"><span class="pill ' + st.cls + '">' + st.text + '</span><span class="pill owner">' + esc(it.owner === WG ? "WG" : it.owner) + "</span>" +
+        (it.price ? '<span class="pill plain">' + euro(it.price) + "</span>" : "") + "</div></div>" +
+        '<div class="actions">' +
+        '<button type="button" class="tiny" data-act="one" data-id="' + esc(it.id) + '" title="Eine Portion verbrauchen">−1</button>' +
+        '<button type="button" class="tiny" data-act="done" data-id="' + esc(it.id) + '">Aufgebraucht</button>' +
+        '<button type="button" class="tiny danger" data-act="waste" data-id="' + esc(it.id) + '">Weggeworfen</button>' +
+        "</div></div>";
+    }).join("");
+  }
+  function renderShopping() {
+    var open = state.shopping.filter(function (s) { return !s.done; });
+    var done = state.shopping.filter(function (s) { return s.done; });
+    el("shopCount").textContent = open.length + " offen" + (done.length ? ", " + done.length + " im Wagen" : "");
+    if (!state.shopping.length) { el("shop").innerHTML = '<p class="empty">Nichts zu kaufen. Leere oder weggeworfene Lebensmittel landen automatisch hier.</p>'; el("shopActions").innerHTML = ""; return; }
+    el("shop").innerHTML = open.concat(done).map(function (s) {
+      return '<div class="shopitem' + (s.done ? " done" : "") + '"><input type="checkbox" id="c' + esc(s.id) + '" data-id="' + esc(s.id) + '"' + (s.done ? " checked" : "") + ' aria-label="' + esc(s.name) + ' gekauft">' +
+        '<div><span class="sname" style="font-weight:800">' + esc(s.name) + '</span> <span class="small muted">' + esc(fmtQty(s.qty, s.unit)) + "</span>" +
+        (s.reason ? '<div class="meta"><span class="pill ' + (/Weggeworfen/.test(s.reason) ? "gone" : /Mindest/.test(s.reason) ? "soon" : "plain") + '">' + esc(s.reason) + "</span></div>" : "") + "</div>" +
+        '<button type="button" class="tiny ghost" data-del="' + esc(s.id) + '" aria-label="' + esc(s.name) + ' entfernen">✕</button></div>';
+    }).join("");
+    el("shopActions").innerHTML = done.length ? '<button type="button" class="primary" id="stowBtn">Gekauftes einräumen (' + done.length + ")</button>" +
+      '<span class="small muted">Haltbarkeit wird auf 1 Woche gesetzt und lässt sich im Kühlschrank anpassen.</span>' : "";
+    if (done.length) el("stowBtn").addEventListener("click", stow);
+  }
+  function renderWaste() {
+    var box = el("waste");
+    if (!state.waste.length) { box.innerHTML = '<p class="empty">Noch nichts weggeworfen. Sehr gut!</p>'; return; }
+    var total = state.waste.reduce(function (s, w) { return s + (w.value || 0); }, 0);
+    var byName = {}, byOwner = {};
+    state.waste.forEach(function (w) {
+      byName[w.name] = (byName[w.name] || 0) + 1;
+      var o = w.owner === WG ? "WG" : (w.owner || "?");
+      byOwner[o] = (byOwner[o] || 0) + (w.value || 0);
+    });
+    var top = Object.keys(byName).sort(function (a, b) { return byName[b] - byName[a]; }).slice(0, 5);
+    var maxN = byName[top[0]] || 1;
+    var owners = Object.keys(byOwner).sort(function (a, b) { return byOwner[b] - byOwner[a]; });
+    box.innerHTML =
+      '<div class="tiles" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div class="tile gone"><b>' + state.waste.length + '</b><span class="small muted">Lebensmittel weggeworfen</span></div>' +
+      '<div class="tile gone"><b>' + euro(total) + '</b><span class="small muted">Wert insgesamt</span></div></div>' +
+      '<p class="small muted">Am häufigsten weggeworfen</p><div class="bars">' + top.map(function (n) {
+        return '<div class="barrow"><span>' + esc(n) + '</span><div class="barbg"><div class="barfill" style="width:' + (byName[n] / maxN * 100) + '%"></div></div><span>' + byName[n] + "×</span></div>";
+      }).join("") + "</div>" +
+      '<p class="small muted">Wert nach Besitzer: ' + owners.map(function (o) { return esc(o) + " " + euro(byOwner[o]); }).join(" · ") + "</p>";
+  }
+  function renderRules() {
+    el("rules").innerHTML = state.rules.length ? state.rules.map(function (r) {
+      var have = stockOf(r.name);
+      return '<span class="chip">' + esc(r.name) + ": mind. " + esc(fmtQty(r.min, r.unit)) + ' <span class="pill ' + (have < r.min ? "soon" : "fresh") + '">da: ' + esc(fmtQty(have, r.unit)) + '</span><button type="button" data-rule="' + esc(r.id) + '" aria-label="Regel ' + esc(r.name) + ' löschen">✕</button></span>';
+    }).join("") : '<span class="small muted">Noch keine Regel, z. B. „immer mindestens 6 Eier“.</span>';
+    el("members").innerHTML = state.members.map(function (m) {
+      return '<span class="chip">' + esc(m) + (state.members.length > 1 ? '<button type="button" data-member="' + esc(m) + '" aria-label="' + esc(m) + ' entfernen">✕</button>' : '<span style="width:8px"></span>') + "</span>";
+    }).join("");
+  }
+  function render() { renderHeader(); renderTiles(); renderItems(); renderShopping(); renderWaste(); renderRules(); renderFallbackRecipes(); }
+
+  // ---------- Rezepte ----------
+  var RECIPES = [
+    { t: "Gemüse-Rührei", min: 10, k: ["eier", "paprika", "tomate", "zwiebel", "käse", "spinat", "schinken"], s: ["Gemüse klein schneiden und in Butter 3 Minuten anbraten.", "Eier mit Salz und Pfeffer verquirlen, dazugeben.", "Bei mittlerer Hitze stocken lassen, mit Käse bestreuen."] },
+    { t: "Pfannkuchen", min: 20, k: ["milch", "eier", "mehl", "butter", "apfel", "banane"], s: ["250 g Mehl, 2 Eier, 400 ml Milch und eine Prise Salz glatt rühren.", "Kurz quellen lassen.", "Portionsweise in Butter goldbraun backen, nach Lust mit Obst füllen."] },
+    { t: "Quesadillas mit Resten", min: 15, k: ["tortilla", "käse", "paprika", "mais", "bohnen", "hähnchen", "feta"], s: ["Tortilla zur Hälfte mit Käse und klein geschnittenen Resten belegen.", "Zuklappen und in der Pfanne ohne Fett von beiden Seiten knusprig braten.", "In Ecken schneiden, mit Joghurt-Dip servieren."] },
+    { t: "Ofengemüse mit Feta", min: 35, k: ["feta", "paprika", "zucchini", "aubergine", "tomate", "möhre", "kartoffel", "zwiebel"], s: ["Ofen auf 200 °C vorheizen.", "Gemüse würfeln, mit Öl, Salz und Kräutern mischen.", "25 Minuten backen, Feta darüberbröseln und 5 Minuten weiterbacken."] },
+    { t: "Hähnchen-Wraps", min: 20, k: ["hähnchen", "tortilla", "salat", "gurke", "tomate", "joghurt", "paprika"], s: ["Hähnchen in Streifen schneiden und scharf anbraten.", "Joghurt mit Salz, Knoblauch und Zitrone verrühren.", "Tortillas mit Salat, Gemüse, Hähnchen und Soße füllen und rollen."] },
+    { t: "Nudeln mit Tomaten-Sahne-Soße", min: 20, k: ["nudeln", "tomate", "sahne", "zwiebel", "spinat", "käse", "paprika"], s: ["Nudeln kochen.", "Zwiebel anschwitzen, Tomaten und Gemüse 5 Minuten köcheln.", "Sahne einrühren, abschmecken, mit den Nudeln mischen."] },
+    { t: "Frittata", min: 25, k: ["eier", "kartoffel", "spinat", "käse", "zucchini", "paprika", "feta"], s: ["Gemüse in einer ofenfesten Pfanne anbraten.", "6 verquirlte Eier mit Käse darübergießen.", "Bei 180 °C etwa 12 Minuten im Ofen stocken lassen."] },
+    { t: "Joghurt-Bowl", min: 5, k: ["joghurt", "quark", "banane", "apfel", "beeren", "haferflocken", "honig"], s: ["Joghurt oder Quark in eine Schüssel geben.", "Obst klein schneiden und darauf verteilen.", "Mit Haferflocken und Honig toppen."] },
+    { t: "Gemüsesuppe", min: 30, k: ["möhre", "kartoffel", "lauch", "zwiebel", "sellerie", "zucchini", "brokkoli"], s: ["Gemüse würfeln und in Öl anschwitzen.", "Mit Brühe bedecken und 20 Minuten köcheln.", "Pürieren oder stückig lassen, mit Sahne verfeinern."] },
+    { t: "Bratkartoffeln mit Spiegelei", min: 25, k: ["kartoffel", "eier", "zwiebel", "speck", "schinken", "butter"], s: ["Gekochte Kartoffeln in Scheiben schneiden.", "In Öl knusprig braten, Zwiebeln und Speck zugeben.", "Spiegeleier dazu braten und servieren."] },
+    { t: "Smoothie", min: 5, k: ["banane", "milch", "joghurt", "beeren", "spinat", "apfel", "saft"], s: ["Alles grob schneiden.", "Mit Milch oder Saft im Mixer pürieren.", "Sofort trinken."] },
+    { t: "Toast überbacken", min: 15, k: ["toast", "käse", "schinken", "tomate", "ananas", "mozzarella", "paprika"], s: ["Toast mit Butter bestreichen.", "Mit Schinken, Tomate oder Resten belegen, Käse darauf.", "Bei 200 °C 8 Minuten überbacken."] }
+  ];
+  function stem(n) { return norm(n).replace(/(n|en|e|s)$/, ""); }
+  function renderFallbackRecipes() {
+    var box = el("recipes");
+    if (!state.items.length) { box.innerHTML = ""; return; }
+    var scored = RECIPES.map(function (r) {
+      var used = [], score = 0;
+      state.items.forEach(function (it) {
+        var n = stem(it.name);
+        if (r.k.some(function (k) { return n.indexOf(stem(k)) >= 0 || stem(k).indexOf(n) >= 0; })) {
+          if (used.indexOf(it.name) < 0) used.push(it.name);
+          var d = daysLeft(it.expires);
+          score += d < 0 ? 0.5 : d <= 2 ? 3 : 1;
+        }
+      });
+      return { r: r, used: used, score: score };
+    }).filter(function (x) { return x.used.length; }).sort(function (a, b) { return b.score - a.score; }).slice(0, sample ? 2 : 3);
+    if (!scored.length) { box.innerHTML = '<p class="small muted">Für diese Zutaten passt keins der Standardrezepte.</p>'; return; }
+    box.innerHTML = '<p class="small muted">' + (sample ? "Aus der Rezeptsammlung:" : "Passend aus der Rezeptsammlung:") + "</p>" + scored.map(function (x) {
+      return '<div class="recipe"><div class="row between"><h3>' + esc(x.r.t) + '</h3><span class="pill plain">' + x.r.min + ' min</span></div>' +
+        '<div class="meta">' + x.used.map(function (u) { return '<span class="pill fresh">' + esc(u) + "</span>"; }).join("") + "</div>" +
+        "<ol>" + x.r.s.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("") + "</ol></div>";
+    }).join("");
+  }
+
+  var sample = null, aiCtl = null, lastAi = null;
+  function aiPrompt() {
+    var list = state.items.slice().sort(function (a, b) { return a.expires < b.expires ? -1 : 1; }).map(function (i) {
+      var d = daysLeft(i.expires);
+      return "- " + i.name + " (" + fmtQty(i.qty, i.unit) + ", " + (d < 0 ? "abgelaufen seit " + (-d) + " Tagen" : d === 0 ? "läuft heute ab" : "noch " + d + " Tage haltbar") + ")";
+    }).join("\n");
+    return "Du hilfst einer Studenten-WG, Lebensmittelverschwendung zu vermeiden. Schlage EIN einfaches, günstiges Gericht vor, " +
+      "das vor allem die Lebensmittel verbraucht, die bald ablaufen. Bereits abgelaufene Lebensmittel nur verwenden, wenn sie unbedenklich sind " +
+      "(z. B. Joghurt kurz nach MHD), sonst ignorieren. Grundzutaten wie Salz, Pfeffer, Öl, Mehl, Nudeln, Reis und Gewürze darfst du voraussetzen.\n\n" +
+      "Kühlschrank:\n" + list + "\n\n" +
+      'Antworte nur mit JSON in diesem Format: {"titel": string, "dauer_min": number, "nutzt": [string], "zusaetzlich_kaufen": [string], "schritte": [string], "tipp": string}. ' +
+      "Alle Texte auf Deutsch, höchstens 6 Schritte, zusaetzlich_kaufen nur wenn wirklich nötig (höchstens 3 Dinge).";
+  }
+  function renderAi(r) {
+    var buy = Array.isArray(r.zusaetzlich_kaufen) ? r.zusaetzlich_kaufen.map(String) : [];
+    el("aiOut").innerHTML = '<div class="recipe" style="border-color:var(--accent)"><div class="row between"><h3>' + esc(r.titel || "Rezeptidee") + '</h3><span class="pill owner">KI-Vorschlag' + (r.dauer_min ? " · " + esc(r.dauer_min) + " min" : "") + "</span></div>" +
+      '<div class="meta">' + (Array.isArray(r.nutzt) ? r.nutzt.map(function (u) { return '<span class="pill fresh">' + esc(u) + "</span>"; }).join("") : "") + "</div>" +
+      "<ol>" + (Array.isArray(r.schritte) ? r.schritte.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("") : "") + "</ol>" +
+      (r.tipp ? '<p class="small muted">Tipp: ' + esc(r.tipp) + "</p>" : "") +
+      (buy.length ? '<div class="row"><span class="small">Fehlt noch: ' + esc(buy.join(", ")) + '</span><button type="button" class="tiny" id="buyMissing">Auf die Einkaufsliste</button></div>' : "") + "</div>";
+    if (buy.length) el("buyMissing").addEventListener("click", function () {
+      var n = 0; buy.forEach(function (b) { if (addShopping(b, 1, "Stk", "Für Rezept: " + (r.titel || ""))) n++; });
+      save(n ? n + " Zutat(en) auf die Einkaufsliste gesetzt" : "Steht schon auf der Liste");
+    });
+  }
+  el("aiBtn").addEventListener("click", function () {
+    if (!sample) return;
+    if (!state.items.length) { toast("Erst Lebensmittel eintragen"); return; }
+    aiCtl = new AbortController();
+    el("aiBtn").disabled = true; el("stopBtn").hidden = false;
+    el("aiOut").innerHTML = '<p class="thinking">Claude denkt über deine Reste nach …</p>';
+    sample.json(aiPrompt(), { signal: aiCtl.signal, cache: false, modelTier: "default" }).then(function (r) {
+      if (!r || typeof r !== "object") throw { code: "invalid_json" };
+      lastAi = r; renderAi(r);
+    }).catch(function (e) {
+      var code = e && e.code;
+      if (code === "cancelled") { el("aiOut").innerHTML = ""; return; }
+      if (code === "not_granted" || code === "sampling_disabled" || code === "not_declared") { el("aiBtn").hidden = true; el("aiOut").innerHTML = '<p class="small muted">KI-Rezepte sind hier nicht freigegeben. Die Rezeptsammlung unten funktioniert trotzdem.</p>'; return; }
+      el("aiOut").innerHTML = '<p class="small muted">' + (code === "rate_limited" ? "Gerade zu viele Anfragen. Versuch es gleich noch einmal." : "Das hat nicht geklappt. Versuch es noch einmal oder nimm ein Rezept aus der Sammlung.") + "</p>";
+    }).then(function () { el("aiBtn").disabled = false; el("stopBtn").hidden = true; el("aiBtn").textContent = "Anderes KI-Rezept"; });
+  });
+  el("stopBtn").addEventListener("click", function () { if (aiCtl) aiCtl.abort(); });
+
+  // ---------- Eingaben ----------
+  el("fExp").value = plusDays(5);
+  document.querySelectorAll("[data-days]").forEach(function (b) {
+    b.addEventListener("click", function () { el("fExp").value = plusDays(Number(b.getAttribute("data-days"))); });
+  });
+  el("addForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var name = el("fName").value.trim(); if (!name) return;
+    var qty = Number(el("fQty").value) || 1, price = Number(el("fPrice").value) || 0;
+    state.items.push({ id: uid(), name: name.charAt(0).toUpperCase() + name.slice(1), qty: qty, origQty: qty, unit: el("fUnit").value,
+      expires: el("fExp").value || plusDays(5), owner: el("fOwner").value || WG, price: price, added: Date.now(), by: me });
+    var n = norm(name);
+    state.shopping = state.shopping.filter(function (s) { return s.done || norm(s.name) !== n; });
+    el("fName").value = ""; el("fPrice").value = ""; el("fQty").value = 1;
+    save(name + " eingetragen");
+    el("fName").focus();
+  });
+  el("items").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-act]"); if (!b) return;
+    var id = b.getAttribute("data-id"), act = b.getAttribute("data-act");
+    if (act === "one") consumeOne(id); else if (act === "done") finishItem(id); else if (act === "waste") wasteItem(id);
+  });
+  el("shopForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var n = el("sName").value.trim(); if (!n) return;
+    if (addShopping(n.charAt(0).toUpperCase() + n.slice(1), 1, "Stk", "")) save(); else toast("Steht schon auf der Liste");
+    el("sName").value = "";
+  });
+  el("shop").addEventListener("change", function (e) {
+    var id = e.target.getAttribute && e.target.getAttribute("data-id"); if (!id) return;
+    state.shopping.forEach(function (s) { if (s.id === id) s.done = e.target.checked; });
+    save();
+  });
+  el("shop").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-del]"); if (!b) return;
+    var id = b.getAttribute("data-del");
+    state.shopping = state.shopping.filter(function (s) { return s.id !== id; });
+    save();
+  });
+  function stow() {
+    var done = state.shopping.filter(function (s) { return s.done; });
+    done.forEach(function (s) {
+      state.items.push({ id: uid(), name: s.name, qty: s.qty || 1, origQty: s.qty || 1, unit: s.unit || "Stk", expires: plusDays(7), owner: WG, price: 0, added: Date.now(), by: me });
+    });
+    state.shopping = state.shopping.filter(function (s) { return !s.done; });
+    save(done.length + " Artikel eingeräumt");
+  }
+  el("ruleForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var n = el("rName").value.trim(), q = Number(el("rQty").value); if (!n || !(q > 0)) return;
+    n = n.charAt(0).toUpperCase() + n.slice(1);
+    state.rules = state.rules.filter(function (r) { return norm(r.name) !== norm(n); });
+    state.rules.push({ id: uid(), name: n, min: q, unit: el("rUnit").value });
+    var added = checkRules();
+    el("rName").value = "";
+    save(added.length ? "Regel angelegt, " + n + " fehlt und steht jetzt auf der Liste" : "Regel angelegt");
+  });
+  el("rules").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-rule]"); if (!b) return;
+    var id = b.getAttribute("data-rule");
+    state.rules = state.rules.filter(function (r) { return r.id !== id; });
+    save();
+  });
+  el("memberForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var n = el("mName").value.trim(); if (!n) return;
+    if (state.members.some(function (m) { return norm(m) === norm(n); })) { toast(n + " ist schon dabei"); return; }
+    state.members.push(n); el("mName").value = ""; save(n + " ist jetzt in der WG");
+  });
+  el("members").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-member]"); if (!b) return;
+    var m = b.getAttribute("data-member");
+    state.members = state.members.filter(function (x) { return x !== m; });
+    save();
+  });
+  el("me").addEventListener("change", function () { me = el("me").value; try { localStorage.setItem(ME_KEY, me); } catch (e) {} });
+
+  function loadDemo() {
+    var members = ["Ich", "Lena", "Tom"];
+    function it(name, qty, unit, days, owner, price, orig) { return { id: uid(), name: name, qty: qty, origQty: orig || qty, unit: unit, expires: plusDays(days), owner: owner, price: price, added: Date.now(), by: "Ich" }; }
+    state = {
+      rev: state.rev, members: members,
+      items: [
+        it("Spinat", 1, "Packung", -1, "Lena", 1.79),
+        it("Joghurt", 2, "Becher", 0, "Lena", 1.78),
+        it("Milch", 1, "l", 1, WG, 1.19),
+        it("Hähnchen", 400, "g", 1, "Ich", 4.99),
+        it("Paprika", 2, "Stk", 2, "Tom", 1.49),
+        it("Tortillas", 6, "Stk", 4, "Tom", 1.59),
+        it("Eier", 4, "Stk", 6, WG, 2.49, 10),
+        it("Käse", 200, "g", 9, WG, 2.29),
+        it("Feta", 1, "Packung", 12, "Ich", 1.29),
+        it("Butter", 1, "Stk", 20, WG, 2.39)
+      ],
+      shopping: [{ id: uid(), name: "Kaffee", qty: 1, unit: "Packung", reason: "", by: "Tom", done: false }],
+      rules: [{ id: uid(), name: "Eier", min: 6, unit: "Stk" }, { id: uid(), name: "Milch", min: 1, unit: "l" }],
+      waste: [
+        { name: "Brot", qty: 1, unit: "Stk", value: 2.1, owner: WG, by: "Lena", date: plusDays(-12) },
+        { name: "Salat", qty: 1, unit: "Stk", value: 1.29, owner: "Tom", by: "Tom", date: plusDays(-6) },
+        { name: "Sahne", qty: 1, unit: "Becher", value: 0.99, owner: WG, by: "Ich", date: plusDays(-3) },
+        { name: "Salat", qty: 1, unit: "Stk", value: 1.29, owner: "Tom", by: "Tom", date: plusDays(-1) }
+      ]
+    };
+    checkRules();
+    save("Beispiel-WG geladen");
+  }
+  el("demoBtn").addEventListener("click", loadDemo);
+  el("resetBtn").addEventListener("click", function () { el("resetConfirm").classList.add("show"); });
+  el("resetNo").addEventListener("click", function () { el("resetConfirm").classList.remove("show"); });
+  el("resetYes").addEventListener("click", function () {
+    var rev = state.rev, members = state.members; state = emptyState(); state.rev = rev; state.members = members;
+    el("resetConfirm").classList.remove("show"); save("Alles geleert");
+  });
+
+  init();
+})();
+</script>
+</body>
+</html>
